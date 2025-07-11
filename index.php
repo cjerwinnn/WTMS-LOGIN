@@ -69,66 +69,124 @@
     }
 
     #history-container {
-      width: 320px;
-      background: white;
+      width: 380px;
+      background: #ffffff;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      padding: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 20px;
       display: flex;
       flex-direction: column;
       height: 480px;
-      overflow-y: auto;
       font-size: 14px;
       color: #444;
     }
 
     #history-container h3 {
       margin-top: 0;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
       font-weight: 700;
-      color: #222;
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 6px;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+      text-align: center;
     }
 
     #history-log {
       flex: 1;
       overflow-y: auto;
+      padding-right: 10px;
     }
 
+    /* --- MODIFIED LOG ENTRY STYLES --- */
     .log-entry {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      border-radius: 6px;
       margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid #eee;
+      transition: background-color 0.3s;
+    }
+
+    .log-success {
+      background-color: #e8f5e9;
+      border-left: 5px solid #4CAF50;
+    }
+
+    .log-error {
+      background-color: #ffebee;
+      border-left: 5px solid #f44336;
     }
 
     .log-time {
       font-size: 11px;
-      color: #999;
-      margin-bottom: 3px;
+      color: #7f8c8d;
+      margin-bottom: 6px;
+      /* Increased space */
+      font-weight: 500;
     }
 
-    .log-text {
+    .log-name {
+      /* For the [ID] Fullname line */
+      font-size: 14px;
       font-weight: 600;
+      color: #34495e;
+      margin-bottom: 4px;
+      /* Space between name and status */
     }
+
+    .log-status {
+      /* For the punch state line */
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .log-status-success {
+      color: #388e3c;
+      /* Darker green for success */
+    }
+
+    .log-status-error {
+      color: #d32f2f;
+      /* Darker red for error */
+    }
+
+    /* --- END OF LOG STYLES --- */
 
     #result {
       margin-top: 15px;
       font-family: monospace;
       white-space: pre-wrap;
       background: #eee;
-      padding: 10px;
+      padding: 15px;
       border-radius: 6px;
       border: 1px solid #ccc;
       max-width: 640px;
       width: 100%;
       color: #222;
-      min-height: 40px;
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    #result-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    #result-status {
+      font-size: 14px;
+      color: #555;
+      margin-top: 5px;
     }
 
     #result.loading {
       color: #007bff;
       font-weight: 700;
+      font-size: 16px;
     }
 
     #flash-overlay {
@@ -160,7 +218,7 @@
     </div>
 
     <div id="history-container">
-      <h3>Detection History</h3>
+      <h3>Log History</h3>
       <div id="history-log"></div>
     </div>
   </div>
@@ -169,7 +227,20 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+
   <script>
+    let voices = [];
+
+    function populateVoiceList() {
+      voices = window.speechSynthesis.getVoices();
+    }
+
+    populateVoiceList();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
     function playFlashAnimation() {
       const flash = document.getElementById('flash-overlay');
       flash.style.opacity = '1';
@@ -178,27 +249,47 @@
       }, 100);
     }
 
-    function addHistoryEntry(text) {
+    // --- HEAVILY MODIFIED FUNCTION ---
+    function addHistoryEntry(data) {
       const historyLog = document.getElementById('history-log');
       const entry = document.createElement('div');
-      entry.className = 'log-entry';
 
-      const time = document.createElement('div');
-      time.className = 'log-time';
-      time.textContent = new Date().toLocaleTimeString();
+      const isSuccess = data.status === 'success';
+      entry.className = `log-entry ${isSuccess ? 'log-success' : 'log-error'}`;
 
-      const content = document.createElement('div');
-      content.className = 'log-text';
-      content.textContent = text;
+      // 1. DATE TIME
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'log-time';
+      timeDiv.textContent = new Date().toLocaleString();
+      entry.appendChild(timeDiv);
 
-      entry.appendChild(time);
-      entry.appendChild(content);
+      if (isSuccess) {
+        // 2. [EMPLOYEEID] FULLNAME
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'log-name';
+        nameDiv.textContent = `[${data.employeeid}] ${data.lastname}, ${data.firstname}`;
+        entry.appendChild(nameDiv);
+
+        // 3. PUNCH STATE
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'log-status log-status-success';
+        statusDiv.textContent = data.punch_status;
+        entry.appendChild(statusDiv);
+      } else {
+        // For errors, just show the message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'log-status log-status-error';
+        errorDiv.textContent = data.message;
+        entry.appendChild(errorDiv);
+      }
+
       historyLog.prepend(entry);
 
       if (historyLog.childElementCount > 50) {
         historyLog.removeChild(historyLog.lastChild);
       }
     }
+
 
     function speak(text) {
       const synth = window.speechSynthesis;
@@ -208,6 +299,13 @@
       utter.lang = 'en-US';
       utter.rate = 1;
       utter.pitch = 1;
+
+      const selectedVoice = voices.find(voice => voice.name === 'Google UK English Female');
+
+      if (selectedVoice) {
+        utter.voice = selectedVoice;
+      }
+
       synth.speak(utter);
     }
 
@@ -291,11 +389,12 @@
       });
     }
 
-    async function captureAndRecognize() {
+    async function captureAndRecognize(punchAction) {
       playFlashAnimation();
       freezeFrame();
       await countdown(0);
 
+      resultEl.innerHTML = '';
       resultEl.classList.add('loading');
       resultEl.textContent = 'Please wait... Searching in database...';
 
@@ -304,36 +403,67 @@
       const response = await fetch('recognize.php', {
         method: 'POST',
         body: new URLSearchParams({
-          webcam_image: dataURL
+          webcam_image: dataURL,
+          action: punchAction
         })
       });
 
-      const text = await response.text();
-      const cleanedText = text.replace(/<br\s*\/?>/gi, '');
+      const data = await response.json();
 
       resultEl.classList.remove('loading');
-      resultEl.textContent = cleanedText;
-      addHistoryEntry(cleanedText);
+      resultEl.textContent = '';
 
-      // Extract name and greet
-      const nameMatch = cleanedText.match(/Name:\s*([A-Za-z\s]+)/i);
-      if (nameMatch && nameMatch[1]) {
-        const name = nameMatch[1].trim();
+      // Pass the entire data object to the history function
+      addHistoryEntry(data);
+
+      if (data.status === 'success') {
+        const {
+          firstname,
+          lastname,
+          employeeid,
+          punch_status
+        } = data;
+
+        const nameDiv = document.createElement('div');
+        nameDiv.id = 'result-name';
+        nameDiv.textContent = `[${employeeid}] ${lastname}, ${firstname}`;
+
+        const statusSmall = document.createElement('small');
+        statusSmall.id = 'result-status';
+        statusSmall.textContent = punch_status;
+
+        resultEl.appendChild(nameDiv);
+        resultEl.appendChild(statusSmall);
+
+        let title = data.gender.toLowerCase() === 'male' ? 'Mister' : 'Miss';
+
         const hour = new Date().getHours();
         let greeting = 'Hello';
         if (hour >= 5 && hour < 12) greeting = 'Good morning';
         else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
         else greeting = 'Good evening';
-        speak(`${greeting}, ${name}`);
+
+        speak(`${greeting}, ${title} ${lastname}. ${punch_status}.`);
+
+      } else {
+        const errorDiv = document.createElement('div');
+        errorDiv.id = 'result-name';
+        errorDiv.style.color = '#d32f2f';
+        errorDiv.textContent = data.message;
+        resultEl.appendChild(errorDiv);
       }
 
       unfreezeFrame();
     }
 
+
     window.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        if (detectionRunning) {
-          captureAndRecognize();
+      if (detectionRunning) {
+        if (e.key === ' ') {
+          e.preventDefault();
+          captureAndRecognize('IN');
+        } else if (e.key === 'Enter') {
+          captureAndRecognize('OUT');
         }
       }
     });
