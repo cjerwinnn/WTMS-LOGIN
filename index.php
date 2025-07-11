@@ -209,9 +209,6 @@
       utter.rate = 1;
       utter.pitch = 1;
       synth.speak(utter);
-
-      const msg = new SpeechSynthesisUtterance("Testing speech synthesis");
-      window.speechSynthesis.speak(msg);
     }
 
     const video = document.getElementById('video');
